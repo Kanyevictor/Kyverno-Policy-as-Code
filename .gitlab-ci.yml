@@ -133,7 +133,7 @@ deploy:
     - mkdir -p ~/.ssh
     - echo "${SSH_KNOWN_HOSTS}" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
-  script:
+  script: #kubectl and kyverno
     - scp -r k8s/ manifests/ policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
     - |
       ssh ${SSH_USER}@${PROD_SERVER_IP} << ENDSSH
@@ -155,7 +155,7 @@ deploy:
 
         kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true
         kubectl rollout status deployment/policypulse-ai -n logging --timeout=120s || true
-        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno"
+        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno" 
       ENDSSH
   only:
     - main
