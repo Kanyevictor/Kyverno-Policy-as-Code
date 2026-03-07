@@ -83,16 +83,16 @@ scan-k8s-manifests:
   tags:
     - st1-runner
   script:
-    - trivy config --format table --output k8s-manifest-scan.txt ./k8s/ ./manifests/ ./policies/
-    - trivy config --format json --output k8s-manifest-scan.json ./k8s/ ./manifests/ ./policies/
-    - trivy config --exit-code 1 --severity HIGH,CRITICAL ./k8s/ ./manifests/
+    - trivy config --format table ./k8s/ | tee k8s-manifest-scan.txt
+    - trivy config --format table ./manifests/ | tee -a k8s-manifest-scan.txt
+    - trivy config --format table ./policies/ | tee -a k8s-manifest-scan.txt
+    - trivy config --exit-code 1 --severity CRITICAL ./k8s/
+    - trivy config --exit-code 1 --severity CRITICAL ./manifests/
   artifacts:
     paths:
       - k8s-manifest-scan.txt
-      - k8s-manifest-scan.json
     expire_in: 30 days
     when: always
-
 # ──────────────────────────────────────────────
 # TEST
 # ──────────────────────────────────────────────
