@@ -16,6 +16,8 @@ variables:
 
 build-weather-app:
   stage: build
+  tags:
+    - st1-runner
   image: docker:24
   services:
     - docker:24-dind
@@ -30,6 +32,8 @@ build-weather-app:
   
 build-policypulse-ai:
   stage: build
+  tags:
+    - st1-runner
   image: docker:24
   services:
     - docker:24-dind
@@ -48,6 +52,8 @@ build-policypulse-ai:
 
 scan-weather-app:
   stage: scan
+  tags:
+    - st1-runner
   image:
     name: aquasec/trivy:latest
     entrypoint: [""]
@@ -61,9 +67,10 @@ scan-weather-app:
       - weather-app-scan.txt
     expire_in: 30 days
 
-
 scan-policypulse-ai:
   stage: scan
+  tags:
+    - st1-runner
   image:
     name: aquasec/trivy:latest
     entrypoint: [""]
@@ -74,11 +81,13 @@ scan-policypulse-ai:
     - build-policypulse-ai
   artifacts:
     paths:
-      - policypulse-ai-scan.txtPROD_SERVER_IP
+      - policypulse-ai-scan.txt
     expire_in: 30 days
 
 scan-k8s-manifests:
   stage: scan
+  tags:
+    - st1-runner
   image:
     name: aquasec/trivy:latest
     entrypoint: [""]
@@ -96,6 +105,8 @@ scan-k8s-manifests:
 
 test-python-unit:
   stage: test
+  tags:
+    - st1-runner
   image: python:3.11-slim
   script:
     - cd app
@@ -106,44 +117,16 @@ test-python-unit:
       - unit-test-report.txt
     expire_in: 30 days
 
+# ──────────────────────────────────────────────
+# DEPLOY
+# ──────────────────────────────────────────────
 
 deploy:
   stage: deploy
+  tags:
+    - st1-runner
   image: alpine:latest
   before_script:
-    - apk add --no-cache openssh-client
-    - eval $(ssh-agent -s)
-    - echo "${SSH_PRIVATE_KEY}" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - echo "${SSH_KNOWN_HOSTS}" >> ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
-  script:
-    - scp -r k8s/ manifests/ policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
-    - |
-      ssh ${SSH_USER}@${PROD_SERVER_IP} << ENDSSH
-        set -e
-        kubectl apply -f ~/policypulse/k8s/namespace.yaml
-        kubectl apply -f ~/policypulse/policies/
-        kubectl apply -f ~/policypulse/k8s/elasticsearch/
-        kubectl apply -f ~/policypulse/k8s/fluent-bit/
-        kubectl apply -f ~/policypulse/k8s/kibana/
-        kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml
-
-        sed -i 's|image: kanyevictor/app:.*|image: ${WEATHER_APP_IMAGE}:${IMAGE_TAG}|' \
-          ~/policypulse/manifests/weather-app-deployment.yaml
-        kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml
-
-        sed -i 's|image: policypulse-ai:.*|image: ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}|' \
-          ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
-        kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
-
-        kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true
-        kubectl rollout status deployment/policypulse-ai -n logging --timeout=120s || true
-        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno"
-      ENDSSH
-  only:
-    - main
-
     - apk add --no-cache openssh-client
     - eval $(ssh-agent -s)
     - echo "${SSH_PRIVATE_KEY}" | tr -d '\r' | ssh-add -
