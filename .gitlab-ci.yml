@@ -46,8 +46,8 @@ build-policypulse-ai:
     - docker build -t ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} .
     - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
 
-# ──────────────────────────────────────────────
-# SCAN — Trivy
+## ──────────────────────────────────────────────
+# SCAN — Trivy (Improved for CI artifacts)
 # ──────────────────────────────────────────────
 
 scan-weather-app:
@@ -58,13 +58,15 @@ scan-weather-app:
     name: aquasec/trivy:latest
     entrypoint: [""]
   script:
+    - echo "Scanning weather-app image..."
     - trivy image --format table --output weather-app-scan.txt ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
-    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    - trivy image --format json --output weather-app-scan.json --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
   needs:
     - build-weather-app
   artifacts:
     paths:
       - weather-app-scan.txt
+      - weather-app-scan.json
     expire_in: 30 days
 
 scan-policypulse-ai:
@@ -75,13 +77,15 @@ scan-policypulse-ai:
     name: aquasec/trivy:latest
     entrypoint: [""]
   script:
+    - echo "Scanning policypulse-ai image..."
     - trivy image --format table --output policypulse-ai-scan.txt ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
-    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    - trivy image --format json --output policypulse-ai-scan.json --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
   needs:
     - build-policypulse-ai
   artifacts:
     paths:
       - policypulse-ai-scan.txt
+      - policypulse-ai-scan.json
     expire_in: 30 days
 
 scan-k8s-manifests:
@@ -92,13 +96,14 @@ scan-k8s-manifests:
     name: aquasec/trivy:latest
     entrypoint: [""]
   script:
+    - echo "Scanning Kubernetes manifests..."
     - trivy config --format table --output k8s-manifest-scan.txt ./k8s/ ./manifests/ ./policies/
-    - trivy config --exit-code 1 --severity HIGH,CRITICAL ./k8s/ ./manifests/
+    - trivy config --format json --output k8s-manifest-scan.json --exit-code 1 --severity HIGH,CRITICAL ./k8s/ ./manifests/ ./policies/
   artifacts:
     paths:
       - k8s-manifest-scan.txt
+      - k8s-manifest-scan.json
     expire_in: 30 days
-
 # ──────────────────────────────────────────────
 # TEST
 # ──────────────────────────────────────────────
