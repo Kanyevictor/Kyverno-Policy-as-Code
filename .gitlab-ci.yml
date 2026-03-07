@@ -1,0 +1,178 @@
+stages:
+  - build
+  - scan
+  - test
+  - deploy
+
+variables:
+  DOCKER_HUB_USER: kanyevictor
+  WEATHER_APP_IMAGE: ${DOCKER_HUB_USER}/weather-app
+  POLICYPULSE_AI_IMAGE: ${DOCKER_HUB_USER}/policypulse-ai
+  IMAGE_TAG: v${CI_PIPELINE_IID}
+
+# ──────────────────────────────────────────────
+# BUILD
+# ──────────────────────────────────────────────
+
+build-weather-app:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "${DOCKER_HUB_TOKEN}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+  script:
+    - cd app
+    - docker build -t ${WEATHER_APP_IMAGE}:${IMAGE_TAG} .
+    - docker push ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+  
+build-policypulse-ai:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "${DOCKER_HUB_TOKEN}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+  script:
+    - cd k8s/policypulse-ai
+    - docker build -t ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} .
+    - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+
+# ──────────────────────────────────────────────
+# SCAN — Trivy
+# ──────────────────────────────────────────────
+
+scan-weather-app:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy image --format table --output weather-app-scan.txt ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+  needs:
+    - build-weather-app
+  artifacts:
+    paths:
+      - weather-app-scan.txt
+    expire_in: 30 days
+
+
+scan-policypulse-ai:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy image --format table --output policypulse-ai-scan.txt ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+  needs:
+    - build-policypulse-ai
+  artifacts:
+    paths:
+      - policypulse-ai-scan.txtPROD_SERVER_IP
+    expire_in: 30 days
+
+scan-k8s-manifests:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  script:
+    - trivy config --format table --output k8s-manifest-scan.txt ./k8s/ ./manifests/ ./policies/
+    - trivy config --exit-code 1 --severity HIGH,CRITICAL ./k8s/ ./manifests/
+  artifacts:
+    paths:
+      - k8s-manifest-scan.txt
+    expire_in: 30 days
+
+# ──────────────────────────────────────────────
+# TEST
+# ──────────────────────────────────────────────
+
+test-python-unit:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - cd app
+    - pip install -r requirements.txt
+    - python -m pytest test_app.py -v --tb=short 2>&1 | tee ../unit-test-report.txt
+  artifacts:
+    paths:
+      - unit-test-report.txt
+    expire_in: 30 days
+
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "${SSH_PRIVATE_KEY}" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - echo "${SSH_KNOWN_HOSTS}" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - scp -r k8s/ manifests/ policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
+    - |
+      ssh ${SSH_USER}@${PROD_SERVER_IP} << ENDSSH
+        set -e
+        kubectl apply -f ~/policypulse/k8s/namespace.yaml
+        kubectl apply -f ~/policypulse/policies/
+        kubectl apply -f ~/policypulse/k8s/elasticsearch/
+        kubectl apply -f ~/policypulse/k8s/fluent-bit/
+        kubectl apply -f ~/policypulse/k8s/kibana/
+        kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml
+
+        sed -i 's|image: kanyevictor/app:.*|image: ${WEATHER_APP_IMAGE}:${IMAGE_TAG}|' \
+          ~/policypulse/manifests/weather-app-deployment.yaml
+        kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml
+
+        sed -i 's|image: policypulse-ai:.*|image: ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}|' \
+          ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
+        kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
+
+        kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true
+        kubectl rollout status deployment/policypulse-ai -n logging --timeout=120s || true
+        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno"
+      ENDSSH
+  only:
+    - main
+
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "${SSH_PRIVATE_KEY}" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - echo "${SSH_KNOWN_HOSTS}" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - scp -r k8s/ manifests/ policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
+    - |
+      ssh ${SSH_USER}@${PROD_SERVER_IP} << ENDSSH
+        set -e
+        kubectl apply -f ~/policypulse/k8s/namespace.yaml
+        kubectl apply -f ~/policypulse/policies/
+        kubectl apply -f ~/policypulse/k8s/elasticsearch/
+        kubectl apply -f ~/policypulse/k8s/fluent-bit/
+        kubectl apply -f ~/policypulse/k8s/kibana/
+        kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml
+
+        sed -i 's|image: kanyevictor/app:.*|image: ${WEATHER_APP_IMAGE}:${IMAGE_TAG}|' \
+          ~/policypulse/manifests/weather-app-deployment.yaml
+        kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml
+
+        sed -i 's|image: policypulse-ai:.*|image: ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}|' \
+          ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
+        kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml
+
+        kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true
+        kubectl rollout status deployment/policypulse-ai -n logging --timeout=120s || true
+        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno"
+      ENDSSH
+  only:
+    - main

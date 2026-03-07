@@ -1,0 +1,27 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: >-
+          VIOLATION: Privileged mode forbidden. Container
+          '{{request.object.spec.containers[].name}}' has privileged=true.
+          FIX: Set securityContext.privileged to false.
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: false

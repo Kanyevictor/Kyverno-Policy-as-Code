@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vulnerable-weather-pod
+  namespace: secure-apps
+
+spec:
+  containers:
+    - name: weather-app
+      image: kanyevictor/app:latest
+      securityContext:
+        privileged: true
+        runAsNonRoot: false
