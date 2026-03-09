@@ -49,18 +49,19 @@ scan-code:
     - st1-runner
   script:
     # Scan Weather App
-    - echo "Scanning Weather App..." | tee bandit-report.txt
-    - bandit -r app -f txt | tee -a bandit-report.txt
+    - echo "Scanning Weather App..." | tee bandit-weather.txt
+    - bandit -r app -f txt -o bandit-weather.txt
     - bandit -r app -f json -o bandit-weather.json
 
     # Scan  AI App
     - echo "" | tee -a bandit-report.txt
-    - echo "Scanning PolicyPulse AI..." | tee -a bandit-report.txt
-    - bandit -r k8s/policypulse-ai -f txt | tee -a bandit-report.txt
+    - echo "Scanning PolicyPulse AI..." | tee -a bandit-ai.txt
+    - bandit -r k8s/policypulse-ai -f txt -o bandit-ai.txt
     - bandit -r k8s/policypulse-ai -f json -o bandit-ai.json
   artifacts:
     paths:
-      - bandit-report.txt
+      - bandit-weather.txt
+      - bandit-ai.txt
       - bandit-weather.json
       - bandit-ai.json
     expire_in: 30 days
