@@ -41,9 +41,29 @@ build-policypulse-ai:
     - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
 
 # ──────────────────────────────────────────────
-# SCAN — Trivy
+# SCAN 
 # ──────────────────────────────────────────────
-
+scan-python-bandit:
+  stage: scan
+  tags:
+    - st1-runner
+  script:
+    - pip install bandit
+    - echo "Scanning Weather App..." | tee bandit-report.txt
+    - bandit -r app -f txt | tee -a bandit-report.txt
+    - echo "" | tee -a bandit-report.txt
+    - echo "Scanning PolicyPulse AI..." | tee -a bandit-report.txt
+    - bandit -r k8s/policypulse-ai -f txt | tee -a bandit-report.txt
+    - bandit -r app -f json -o bandit-weather.json
+    - bandit -r k8s/policypulse-ai -f json -o bandit-ai.json
+  artifacts:
+    paths:
+      - bandit-report.txt
+      - bandit-weather.json
+      - bandit-ai.json
+    expire_in: 30 days
+    when: always
+    
 scan-weather-app:
   stage: scan
   tags:
