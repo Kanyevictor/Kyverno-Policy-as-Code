@@ -48,15 +48,15 @@ scan-code:
   tags:
     - st1-runner
   script:
-    - python3 -m venv venv
-    - source venv/bin/activate
-    - pip install bandit
+    # Scan Weather App
     - echo "Scanning Weather App..." | tee bandit-report.txt
     - bandit -r app -f txt | tee -a bandit-report.txt
+    - bandit -r app -f json -o bandit-weather.json
+
+    # Scan  AI App
     - echo "" | tee -a bandit-report.txt
     - echo "Scanning PolicyPulse AI..." | tee -a bandit-report.txt
     - bandit -r k8s/policypulse-ai -f txt | tee -a bandit-report.txt
-    - bandit -r app -f json -o bandit-weather.json
     - bandit -r k8s/policypulse-ai -f json -o bandit-ai.json
   artifacts:
     paths:
