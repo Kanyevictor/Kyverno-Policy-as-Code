@@ -43,11 +43,13 @@ build-policypulse-ai:
 # ──────────────────────────────────────────────
 # SCAN 
 # ──────────────────────────────────────────────
-scan-python-bandit:
+scan-code:
   stage: scan
   tags:
     - st1-runner
   script:
+    - python3 -m venv venv
+    - source venv/bin/activate
     - pip install bandit
     - echo "Scanning Weather App..." | tee bandit-report.txt
     - bandit -r app -f txt | tee -a bandit-report.txt
@@ -63,7 +65,7 @@ scan-python-bandit:
       - bandit-ai.json
     expire_in: 30 days
     when: always
-    
+
 scan-weather-app:
   stage: scan
   tags:
