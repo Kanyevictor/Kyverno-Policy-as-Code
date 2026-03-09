@@ -49,19 +49,17 @@ scan-code:
     - st1-runner
   script:
     # Scan Weather App
-    - echo "Scanning Weather App..." | tee bandit-weather.txt
-    - bandit -r app -f txt -o bandit-weather.txt
-    - bandit -r app -f json -o bandit-weather.json
-
-    # Scan  AI App
-    - echo "" | tee -a bandit-report.txt
-    - echo "Scanning PolicyPulse AI..." | tee -a bandit-ai.txt
-    - bandit -r k8s/policypulse-ai -f txt -o bandit-ai.txt
-    - bandit -r k8s/policypulse-ai -f json -o bandit-ai.json
+  - python3 -m venv venv
+  - source venv/bin/activate
+  - pip install bandit
+  - bandit -r app -f txt -o $CI_PROJECT_DIR/bandit-weather.txt
+  - bandit -r k8s/policypulse-ai -f txt -o $CI_PROJECT_DIR/bandit-ai.txt
+  - bandit -r app -f json -o $CI_PROJECT_DIR/bandit-weather.json
+  - bandit -r k8s/policypulse-ai -f json -o $CI_PROJECT_DIR/bandit-ai.json
   artifacts:
     paths:
       - bandit-weather.txt
-      - bandit-ai.txt
+      - bandit-ai.t
       - bandit-weather.json
       - bandit-ai.json
     expire_in: 30 days
