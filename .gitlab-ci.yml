@@ -128,6 +128,8 @@ test-python-unit:
     - st1-runner
   script:
     - cd app
+    - python3 -m venv venv
+    - source venv/bin/activate
     - pip install -r requirements.txt
     - python3 -m pytest test_app.py -v --tb=short 2>&1 | tee ../unit-test-report.txt
   artifacts:
