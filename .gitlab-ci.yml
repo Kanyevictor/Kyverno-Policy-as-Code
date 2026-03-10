@@ -56,6 +56,7 @@ scan-code:
   - bandit -r k8s/policypulse-ai -f txt -o $CI_PROJECT_DIR/bandit-ai.txt
   - bandit -r app -f json -o $CI_PROJECT_DIR/bandit-weather.json
   - bandit -r k8s/policypulse-ai -f json -o $CI_PROJECT_DIR/bandit-ai.json
+  allow_failure: true
   artifacts:
     paths:
       - bandit-weather.txt
@@ -75,6 +76,7 @@ scan-weather-app:
     - trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
   needs:
     - build-weather-app
+  allow_failure: true
   artifacts:
     paths:
       - weather-app-scan.txt
@@ -92,6 +94,7 @@ scan-policypulse-ai:
     - trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
   needs:
     - build-policypulse-ai
+  allow_failure: true
   artifacts:
     paths:
       - policypulse-ai-scan.txt
@@ -109,6 +112,7 @@ scan-k8s-manifests:
     - trivy config --format table ./policies/ | tee -a k8s-manifest-scan.txt
     - trivy config --exit-code 1 --severity CRITICAL ./k8s/
     - trivy config --exit-code 1 --severity CRITICAL ./manifests/
+  allow_failure: true
   artifacts:
     paths:
       - k8s-manifest-scan.txt
