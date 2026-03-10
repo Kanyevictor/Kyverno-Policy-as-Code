@@ -40,7 +40,7 @@ build-policypulse-ai:
     - docker build -t ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} .
     - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
 
-## ──────────────────────────────────────────────
+# ──────────────────────────────────────────────
 # SCAN 
 # ──────────────────────────────────────────────
 #scan-code:
