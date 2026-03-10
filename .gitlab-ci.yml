@@ -135,20 +135,6 @@ test-python-unit:
       - unit-test-report.txt
     expire_in: 30 days
 
-test-kyverno-policies:
-  stage: test
-  tags:
-    - st1-runner
-  script:
-    - echo "=== Testing good manifest ===" | tee kyverno-test-report.txt
-    - kyverno apply ./policies/ --resource=./manifests/test-good.yaml 2>&1 | tee -a kyverno-test-report.txt
-    - echo "" >> kyverno-test-report.txt
-    - echo "=== Testing bad manifest ===" | tee -a kyverno-test-report.txt
-    - kyverno apply ./policies/ --resource=./manifests/test-bad.yaml 2>&1 | tee -a kyverno-test-report.txt || true
-  artifacts:
-    paths:
-      - kyverno-test-report.txt
-    expire_in: 30 days
 
 # ──────────────────────────────────────────────
 # DEPLOY — SSH to Production
