@@ -15,6 +15,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              namespaceSelector:
+                matchLabels:
+                  policy-enforcement: enabled
       validate:
         message: >-
           VIOLATION: Privileged mode forbidden. Container

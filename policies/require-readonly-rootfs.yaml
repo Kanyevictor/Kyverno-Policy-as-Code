@@ -11,6 +11,9 @@ spec:
           - resources:
               kinds:
                 - Pod
+              namespaceSelector:
+                matchLabels:
+                  policy-enforcement: enabled
       validate:
         message: >-
           VIOLATION: Root filesystem must be read-only. FIX: Set
