@@ -55,7 +55,7 @@ spec:
       serviceAccountName: policypulse-ai
       containers:
       - name: policypulse-ai
-        image: ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} 
+        image: kanyevictor/policypulse-ai:v19
         imagePullPolicy: Never
         ports:
         - containerPort: 5000
@@ -77,7 +77,7 @@ spec:
           limits:
             cpu: 500m
             memory: 256Mi
-        volumeMounts:policypulse-ai:
+        volumeMounts:
         - name: tmp
           mountPath: /tmp
       volumes:
