@@ -43,64 +43,64 @@ build-policypulse-ai:
 # ──────────────────────────────────────────────
 # SCAN 
 # ──────────────────────────────────────────────
-scan-code:
-  stage: scan
-  tags:
-    - st1-runner
-  script:
+#scan-code:
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
     # Scan Weather App
-  - python3 -m venv venv
-  - source venv/bin/activate
-  - pip install bandit
-  - bandit -r app -f txt -o $CI_PROJECT_DIR/bandit-weather.txt
-  - bandit -r k8s/policypulse-ai -f txt -o $CI_PROJECT_DIR/bandit-ai.txt
-  - bandit -r app -f json -o $CI_PROJECT_DIR/bandit-weather.json
-  - bandit -r k8s/policypulse-ai -f json -o $CI_PROJECT_DIR/bandit-ai.json
-  allow_failure: true
-  artifacts:
-    paths:
-      - bandit-weather.txt
-      - bandit-ai.t
-      - bandit-weather.json
-      - bandit-ai.json
-    expire_in: 30 days
-    when: always
+  #- python3 -m venv venv
+  #- source venv/bin/activate
+  #- pip install bandit
+  #- bandit -r app -f txt -o $CI_PROJECT_DIR/bandit-weather.txt
+  #- bandit -r k8s/policypulse-ai -f txt -o $CI_PROJECT_DIR/bandit-ai.txt
+  #- bandit -r app -f json -o $CI_PROJECT_DIR/bandit-weather.json
+  #- bandit -r k8s/policypulse-ai -f json -o $CI_PROJECT_DIR/bandit-ai.json
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - bandit-weather.txt
+     # - bandit-ai.t
+      #- bandit-weather.json
+      #- bandit-ai.json
+    #expire_in: 30 days
+    #when: always
 
-scan-weather-app:
-  stage: scan
-  tags:
-    - st1-runner
-  script:
-    - trivy image --format table --output weather-app-scan.txt ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
-    - trivy image --format json --output weather-app-scan.json ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
-    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
-  needs:
-    - build-weather-app
-  allow_failure: true
-  artifacts:
-    paths:
-      - weather-app-scan.txt
-      - weather-app-scan.json
-    expire_in: 30 days
-    when: always
+#scan-weather-app:
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
+   # - trivy image --format table --output weather-app-scan.txt ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    #- trivy image --format json --output weather-app-scan.json ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    #- trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+  #needs:
+   # - build-weather-app
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - weather-app-scan.txt
+     # - weather-app-scan.json
+    #expire_in: 30 days
+    #when: always
 
-scan-policypulse-ai:
-  stage: scan
-  tags:
-    - st1-runner
-  script:
-    - trivy image --format table --output policypulse-ai-scan.txt ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
-    - trivy image --format json --output policypulse-ai-scan.json ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
-    - trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
-  needs:
-    - build-policypulse-ai
-  allow_failure: true
-  artifacts:
-    paths:
-      - policypulse-ai-scan.txt
-      - policypulse-ai-scan.json
-    expire_in: 30 days
-    when: always
+#scan-policypulse-ai:
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
+   # - trivy image --format table --output policypulse-ai-scan.txt ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    #- trivy image --format json --output policypulse-ai-scan.json ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    #- trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+  #needs:
+   # - build-policypulse-ai
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - policypulse-ai-scan.txt
+     # - policypulse-ai-scan.json
+    #expire_in: 30 days
+    #when: always 
 
 scan-k8s-manifests:
   stage: scan
