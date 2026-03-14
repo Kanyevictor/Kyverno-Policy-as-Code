@@ -14,9 +14,9 @@ variables:
   POLICYPULSE_AI_IMAGE: ${DOCKER_HUB_USER}/policypulse-ai
   IMAGE_TAG: v${CI_PIPELINE_IID}
 
-# ──────────────────────────────────────────────
+
 # BUILD
-# ──────────────────────────────────────────────
+
 
 build-weather-app:
   stage: build
@@ -40,9 +40,9 @@ build-policypulse-ai:
     - docker build -t ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} .
     - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
 
-# ──────────────────────────────────────────────
+
 # SCAN 
-# ──────────────────────────────────────────────
+
 #scan-code:
  # stage: scan
   #tags:
@@ -84,7 +84,8 @@ build-policypulse-ai:
     #expire_in: 30 days
     #when: always
 
-#scan-policypulse-ai:
+#scan-policypulse-ai:ubuntu@gitlab-runner:~$ 
+
  # stage: scan
   #tags:
    # - st1-runner
@@ -133,9 +134,9 @@ scan-kubescape:
       - kubescape-mitre-report.txt
     expire_in: 30 days
     when: always
-# ──────────────────────────────────────────────
+
 # TEST
-# ──────────────────────────────────────────────
+
 
 test-python-unit:
   stage: test
@@ -152,9 +153,9 @@ test-python-unit:
       - unit-test-report.txt
     expire_in: 30 days
 
-# ──────────────────────────────────────────────
+
 # DEPLOY — BY SSH to Production
-# ──────────────────────────────────────────────
+
 
 deploy:
   stage: deploy
