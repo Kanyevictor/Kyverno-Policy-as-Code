@@ -171,20 +171,19 @@ deploy:
     - scp k8s/policy-reporter.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
     - scp manifests/weather-app-deployment.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/manifests/
     - scp -r policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
-    - |
-      ssh ${SSH_USER}@${PROD_SERVER_IP} << 'ENDSSH'
-        kubectl apply -f ~/policypulse/k8s/namespace.yaml
-        kubectl apply -f ~/policypulse/policies/
-        kubectl apply -f ~/policypulse/k8s/elasticsearch/ || true
-        kubectl apply -f ~/policypulse/k8s/fluent-bit/ || true
-        kubectl apply -f ~/policypulse/k8s/kibana/ || true
-        kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml || true
-        kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml || true
-        kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml || true
-        kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true
-        kubectl rollout status deployment/policypulse-ai -n logging --timeout=120s || true
-        echo "=== Deployment Summary ==="
-        kubectl get pods -A | grep -E "weather-app|policypulse|elasticsearch|kibana|fluent|kyverno" 
-      ENDSSH
+    - >
+      ssh ${SSH_USER}@${PROD_SERVER_IP}
+      "kubectl apply -f ~/policypulse/k8s/namespace.yaml &&
+      kubectl apply -f ~/policypulse/policies/ &&
+      kubectl apply -f ~/policypulse/k8s/elasticsearch/ || true &&
+      kubectl apply -f ~/policypulse/k8s/fluent-bit/ || true &&
+      kubectl apply -f ~/policypulse/k8s/kibana/ || true &&
+      kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml || true &&
+      kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml || true &&
+      kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml || true &&
+      kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true &&
+      kubectl rollout status deployment/policypulse-ai -n ai-report --timeout=120s || true &&
+      echo '=== Deployment Summary ===' &&
+      kubectl get pods -A | grep -E 'weather-app|policypulse|elasticsearch|kibana|fluent|kyverno'"
   only:
     - main
