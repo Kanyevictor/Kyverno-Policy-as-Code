@@ -118,6 +118,21 @@ scan-k8s-manifests:
       - k8s-manifest-scan.txt
     expire_in: 30 days
     when: always
+
+scan-kubescape:
+  stage: scan
+  tags:
+    - st1-runner
+  script:
+    - kubescape scan framework nsa ./k8s/ ./manifests/ --format pretty-printer --output kubescape-nsa-report.txt || true
+    - kubescape scan framework mitre ./k8s/ ./manifests/ --format pretty-printer --output kubescape-mitre-report.txt || true
+  allow_failure: true
+  artifacts:
+    paths:
+      - kubescape-nsa-report.txt
+      - kubescape-mitre-report.txt
+    expire_in: 30 days
+    when: always
 # ──────────────────────────────────────────────
 # TEST
 # ──────────────────────────────────────────────

@@ -7,7 +7,6 @@ data:
   export.sh: |
     #!/bin/sh
     set -e
-
     TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
     API_SERVER="https://kubernetes.default.svc"
     ES_URL="http://elasticsearch.logging.svc.cluster.local:9200"
@@ -16,7 +15,6 @@ data:
     echo "=== PolicyPulse Exporter Starting ==="
     echo "Fetching PolicyReports from all namespaces..."
 
-    # Fetch all PolicyReports
     REPORTS=$(wget -qO- \
       --header="Authorization: Bearer ${TOKEN}" \
       --no-check-certificate \
@@ -39,7 +37,6 @@ data:
         resource_kind = scope.get('kind', '')
 
         for r in report.get('results', []):
-            # Convert timestamp from seconds to ISO format
             ts = r.get('timestamp', {})
             seconds = ts.get('seconds', 0)
             if seconds:

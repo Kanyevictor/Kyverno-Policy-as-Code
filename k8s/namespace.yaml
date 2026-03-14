@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: secure-apps # Namespace for the Project
+  name: secure-apps # Namespace for the applications 
   labels:
     policy-enforcement: enabled
 ---

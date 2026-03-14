@@ -2,8 +2,18 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow ':latest' Image Tag
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >
+      This policy ensures that container images do not use the ':latest' tag.
+      Using explicit image versions improves reproducibility, reduces risk of unexpected upgrades,
+      and improves security by preventing automatic pulls of unverified images.
 spec:
   validationFailureAction: Enforce
+  background: true
   rules:
     - name: validate-image-tag
       match:
@@ -11,15 +21,25 @@ spec:
           - resources:
               kinds:
                 - Pod
+                - Deployment
+                - CronJob
               namespaceSelector:
                 matchLabels:
                   policy-enforcement: enabled
       validate:
         message: >-
-          VIOLATION: ':latest' tag forbidden. Image
-          '{{request.object.spec.containers[].image}}' must use
-          an explicit version tag (e.g., nginx:1.25.4).
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+          Container image '{{request.object.spec.containers[].image}}' 
+          cannot use the ':latest' tag. Specify an explicit version instead (e.g., nginx:1.25.4).
+        anyPattern:
+
+          # Pattern for Pods
+          - spec:
+              containers:
+                - image: "!*:latest"
+
+          # Pattern for workload controllers
+          - spec:
+              template:
+                spec:
+                  containers:
+                    - image: "!*:latest"

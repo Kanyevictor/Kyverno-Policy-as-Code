@@ -34,18 +34,7 @@ spec:
         resources:
           limits:
             memory: 128Mi
-            cing.Exclude off
-
-    # Stage 3: FORWARD — send secure-apps logs to Elasticsearch
-    [OUTPUT]
-      Name              es
-      Match             kube.*secure-apps*
-      Host              elasticsearch.logging.svc.cluster.local
-      Port              9200
-      Logstash_Format   On
-      Logstash_Prefix   kyverno-logs
-      Retry_Limit       3
-      Suppresspu: 200m
+            cpu: 200m
           requests:
             memory: 64Mi
             cpu: 50m

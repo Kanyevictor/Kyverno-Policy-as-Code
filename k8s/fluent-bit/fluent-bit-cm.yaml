@@ -14,7 +14,6 @@ data:
       HTTP_Listen     0.0.0.0
       HTTP_Port       2020
 
-    # Stage 1: COLLECT — tail all container logs
     [INPUT]
       Name              tail
       Path              /var/log/containers/*.log
@@ -24,7 +23,6 @@ data:
       Mem_Buf_Limit     5MB
       Skip_Long_Lines   On
 
-    # Stage 2: ENRICH — add Kubernetes metadata to each log record
     [FILTER]
       Name                kubernetes
       Match               kube.*
@@ -35,15 +33,6 @@ data:
       K8S-Logging.Parser  On
       K8S-Logging.Exclude off
 
-    # Stage 3: FORWARD — send secure-apps logs to Elasticsearch
-    [OUTPUT]
-      Name              es
-      Match             kube.*secure-apps*
-      Host              elasticsearch.logging.svc.cluster.local
-      Port              9200
-      Logstashing.Exclude off
-
-    # Stage 3: FORWARD — send secure-apps logs to Elasticsearch
     [OUTPUT]
       Name              es
       Match             kube.*secure-apps*
@@ -52,13 +41,9 @@ data:
       Logstash_Format   On
       Logstash_Prefix   kyverno-logs
       Retry_Limit       3
-      Suppress_Format   On
-      Logstash_Prefix   kyverno-logs
-      Retry_Limit       3
       Suppress_Type_Name On
       Buffer_Size       5MB
 
-    # Stage 4: FORWARD — send kyverno logs to Elasticsearch
     [OUTPUT]
       Name              es
       Match             kube.*kyverno*

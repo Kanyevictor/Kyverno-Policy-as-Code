@@ -2,12 +2,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: require-resource-limits
-  annotations:
-    policies.kyverno.io/title: Require Resource Limits
-    policies.kyverno.io/severity: medium
 spec:
   validationFailureAction: Enforce
-  background: true
   rules:
     - name: check-resource-limits
       match:
@@ -21,11 +17,12 @@ spec:
       validate:
         message: >-
           VIOLATION: CPU and memory limits required.
-          Container must define resources.limits.cpu and resources.limits.memory.
+          Container must define resources.limits.cpu (max 2 core)
+          and resources.limits.memory (max 5Gi).
         pattern:
           spec:
             containers:
               - resources:
                   limits:
-                    memory: "?*"
                     cpu: "?*"
+                    memory: "?*"

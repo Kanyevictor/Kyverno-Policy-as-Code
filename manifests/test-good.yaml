@@ -15,7 +15,7 @@ spec:
       image: kanyevictor/app:v2
       ports:
         - containerPort: 8080
-      securityContext:          # ← must be indented under the container item
+      securityContext:         
         runAsNonRoot: true
         runAsUser: 1000
         readOnlyRootFilesystem: true
