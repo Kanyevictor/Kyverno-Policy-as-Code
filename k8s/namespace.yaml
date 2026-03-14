@@ -15,7 +15,7 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ai-report
+  name: ai-report #Namespace for AI-app
   labels:
     policy-enforcement: enabled
     
