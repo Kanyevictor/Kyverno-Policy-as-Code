@@ -154,7 +154,7 @@ test-python-unit:
     expire_in: 30 days
 
 
-# DEPLOY — BY SSH to Production Server
+# DEPLOY — BY SSH to Production
 
 
 deploy:
