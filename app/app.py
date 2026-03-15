@@ -2,10 +2,8 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import os
 import logging
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+
 
 # Configure logging safely
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
