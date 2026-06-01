@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-weather-pod
+  namespace: secure-apps
+  labels:
+    app: weather-app
+    team: security-team
+spec:
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  containers:
+    - name: weather-app
+      image: kanyevictor/app:v2
+      ports:
+        - containerPort: 8080
+      securityContext:         
+        runAsNonRoot: true
+        runAsUser: 1000
+        readOnlyRootFilesystem: true
+        privileged: false
+        allowPrivilegeEscalation: false
+      resources:
+        limits:
+          cpu: "100m"
+          memory: "256Mi"
+        requests:
+          cpu: "50m"
+          memory: "128Mi"
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp

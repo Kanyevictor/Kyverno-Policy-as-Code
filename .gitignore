@@ -1,0 +1,14 @@
+# Secrets - NEVER commit
+k8s/secrets.yaml
+*.env
+.env
+# Python
+__pycache__/
+*.pyc
+.venv/
+# IDE
+.idea/
+.vscode/
+# OS
+.DS_Store
+EOF

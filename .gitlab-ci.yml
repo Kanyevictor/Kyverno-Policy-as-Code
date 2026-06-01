@@ -1,0 +1,188 @@
+# ============================================================
+# PolicyPulse — GitLab CI/CD Pipeline (Shell Executor)
+# ============================================================
+
+stages:
+  - build
+  - scan
+  - test
+  - deploy
+
+variables:
+  DOCKER_HUB_USER: kanyevictor
+  WEATHER_APP_IMAGE: ${DOCKER_HUB_USER}/weather-app
+  POLICYPULSE_AI_IMAGE: ${DOCKER_HUB_USER}/policypulse-ai
+  IMAGE_TAG: v${CI_PIPELINE_IID}
+
+
+# BUILD
+
+
+build-weather-app:
+  stage: build
+  tags:
+    - st1-runner
+  before_script:
+    - echo "${DOCKER_HUB_TOKEN}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+  script:
+    - cd app
+    - docker build -t ${WEATHER_APP_IMAGE}:${IMAGE_TAG} .
+    - docker push ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+
+build-policypulse-ai:
+  stage: build
+  tags:
+    - st1-runner
+  before_script:
+    - echo "${DOCKER_HUB_TOKEN}" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+  script:
+    - cd k8s/policypulse-ai
+    - docker build -t ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG} .
+    - docker push ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+
+
+# SCAN 
+
+#scan-code:
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
+    # Scan Weather App
+  #- python3 -m venv venv
+  #- source venv/bin/activate
+  #- pip install bandit
+  #- bandit -r app -f txt -o $CI_PROJECT_DIR/bandit-weather.txt
+  #- bandit -r k8s/policypulse-ai -f txt -o $CI_PROJECT_DIR/bandit-ai.txt
+  #- bandit -r app -f json -o $CI_PROJECT_DIR/bandit-weather.json
+  #- bandit -r k8s/policypulse-ai -f json -o $CI_PROJECT_DIR/bandit-ai.json
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - bandit-weather.txt
+     # - bandit-ai.t
+      #- bandit-weather.json
+      #- bandit-ai.json
+    #expire_in: 30 days
+    #when: always
+
+#scan-weather-app:
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
+   # - trivy image --format table --output weather-app-scan.txt ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    #- trivy image --format json --output weather-app-scan.json ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+    #- trivy image --exit-code 1 --severity HIGH,CRITICAL ${WEATHER_APP_IMAGE}:${IMAGE_TAG}
+  #needs:
+   # - build-weather-app
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - weather-app-scan.txt
+     # - weather-app-scan.json
+    #expire_in: 30 days
+    #when: always
+
+#scan-policypulse-ai:ubuntu@gitlab-runner:~$ 
+
+ # stage: scan
+  #tags:
+   # - st1-runner
+  #script:
+   # - trivy image --format table --output policypulse-ai-scan.txt ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    #- trivy image --format json --output policypulse-ai-scan.json ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+    #- trivy image --exit-code 1 --severity HIGH,CRITICAL ${POLICYPULSE_AI_IMAGE}:${IMAGE_TAG}
+  #needs:
+   # - build-policypulse-ai
+  #allow_failure: true
+  #artifacts:
+   # paths:
+    #  - policypulse-ai-scan.txt
+     # - policypulse-ai-scan.json
+    #expire_in: 30 days
+    #when: always 
+
+scan-k8s-manifests:
+  stage: scan
+  tags:
+    - st1-runner
+  script:
+    - trivy config --format table ./k8s/ | tee k8s-manifest-scan.txt
+    - trivy config --format table ./manifests/ | tee -a k8s-manifest-scan.txt
+    - trivy config --format table ./policies/ | tee -a k8s-manifest-scan.txt
+    - trivy config --exit-code 1 --severity CRITICAL ./k8s/
+    - trivy config --exit-code 1 --severity CRITICAL ./manifests/
+  allow_failure: true
+  artifacts:
+    paths:
+      - k8s-manifest-scan.txt
+    expire_in: 30 days
+    when: always
+
+scan-kubescape:
+  stage: scan
+  tags:
+    - st1-runner
+  script:
+    - kubescape scan framework nsa ./k8s/ ./manifests/ --format pretty-printer --output kubescape-nsa-report.txt || true
+    - kubescape scan framework mitre ./k8s/ ./manifests/ --format pretty-printer --output kubescape-mitre-report.txt || true
+  allow_failure: true
+  artifacts:
+    paths:
+      - kubescape-nsa-report.txt
+      - kubescape-mitre-report.txt
+    expire_in: 30 days
+    when: always
+
+# TEST
+
+
+test-python-unit:
+  stage: test
+  tags:
+    - st1-runner
+  script:
+    - cd app
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -r requirements.txt
+    - python3 -m pytest test_app.py -v --tb=short 2>&1 | tee ../unit-test-report.txt
+  artifacts:
+    paths:
+      - unit-test-report.txt
+    expire_in: 30 days
+
+
+# DEPLOY to Production using SSH
+
+deploy:
+  stage: deploy
+  tags:
+    - st1-runner
+  script:
+    - ssh ${SSH_USER}@${PROD_SERVER_IP} "mkdir -p ~/policypulse/{k8s/elasticsearch,k8s/fluent-bit,k8s/kibana,k8s/policypulse-ai,manifests,policies}"
+    - scp -r k8s/namespace.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
+    - scp -r k8s/elasticsearch/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
+    - scp -r k8s/fluent-bit/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
+    - scp -r k8s/kibana/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
+    - scp k8s/policypulse-ai/policypulse-ai-deployment.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/policypulse-ai/
+    - scp k8s/policy-reporter.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/k8s/
+    - scp manifests/weather-app-deployment.yaml ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/manifests/
+    - scp -r policies/ ${SSH_USER}@${PROD_SERVER_IP}:~/policypulse/
+    - >
+      ssh ${SSH_USER}@${PROD_SERVER_IP}
+      "kubectl apply -f ~/policypulse/k8s/namespace.yaml &&
+      kubectl apply -f ~/policypulse/policies/ &&
+      kubectl apply -f ~/policypulse/k8s/elasticsearch/ || true &&
+      kubectl apply -f ~/policypulse/k8s/fluent-bit/ || true &&
+      kubectl apply -f ~/policypulse/k8s/kibana/ || true &&
+      kubectl apply -f ~/policypulse/k8s/policy-reporter.yaml || true &&
+      kubectl apply -f ~/policypulse/manifests/weather-app-deployment.yaml || true &&
+      kubectl apply -f ~/policypulse/k8s/policypulse-ai/policypulse-ai-deployment.yaml || true &&
+      kubectl rollout status deployment/weather-app -n secure-apps --timeout=120s || true &&
+      kubectl rollout status deployment/policypulse-ai -n ai-report --timeout=120s || true &&
+      echo '=== Deployment Summary ===' &&
+      kubectl get pods -A | grep -E 'weather-app|policypulse|elasticsearch|kibana|fluent|kyverno'"
+  only:
+    - main

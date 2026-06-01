@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-app
+  namespace: secure-apps
+  labels:
+    app: weather-app
+    team: security-team
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: weather-app
+
+  template:
+    metadata:
+      labels:
+        app: weather-app
+        team: security-team
+
+    spec:
+      securityContext:
+        runAsNonRoot: true
+    
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+
+      containers:
+        - name: weather-app
+          image: kanyevictor/app:v2
+        
+          volumeMounts:              
+            - name: tmp-volume
+              mountPath: /tmp
+          
+
+          ports:
+            - containerPort: 5000
+
+          env:
+            - name: WEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: WEATHER_API_KEY
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            privileged: false
+            allowPrivilegeEscalation: false
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "100m"
+              memory: "256Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: weather-app
+  namespace: secure-apps
+
+spec:
+  selector:
+    app: weather-app
+
+  ports:
+    - port: 80
+      targetPort: 5000
+      nodePort: 30080
+   
+  type: NodePort

@@ -1,0 +1,22 @@
+replicaCount: 1
+
+resources:
+  limits:
+    memory: 384Mi
+    cpu: 500m
+  requests:
+    memory: 256Mi
+    cpu: 200m
+
+config:
+  webhooks:
+    namespaceSelector:
+      matchExpressions:
+        - key: policy-enforcement
+          operator: In
+          values:
+            - enabled
+
+features:
+  policyReports:
+    enabled: true

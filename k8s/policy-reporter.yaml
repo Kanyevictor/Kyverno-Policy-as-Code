@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-exporter-script
+  namespace: logging
+data:
+  export.sh: |
+    #!/bin/sh
+    set -e
+    TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    API_SERVER="https://kubernetes.default.svc"
+    ES_URL="http://elasticsearch.logging.svc.cluster.local:9200"
+    TODAY=$(date -u +%Y.%m.%d)
+
+    echo "=== PolicyPulse Exporter Starting ==="
+    echo "Fetching PolicyReports from all namespaces..."
+
+    REPORTS=$(wget -qO- \
+      --header="Authorization: Bearer ${TOKEN}" \
+      --no-check-certificate \
+      "${API_SERVER}/apis/wgpolicyk8s.io/v1alpha2/policyreports")
+
+    echo "$REPORTS" | python3 -c "
+    import json, sys, datetime
+    from urllib.request import Request, urlopen
+
+    data = json.load(sys.stdin)
+    es_url = '${ES_URL}'
+    today = '${TODAY}'
+    indexed = 0
+    errors = 0
+
+    for report in data.get('items', []):
+        ns = report.get('metadata', {}).get('namespace', 'cluster')
+        scope = report.get('scope', {})
+        resource_name = scope.get('name', '')
+        resource_kind = scope.get('kind', '')
+
+        for r in report.get('results', []):
+            ts = r.get('timestamp', {})
+            seconds = ts.get('seconds', 0)
+            if seconds:
+                iso_time = datetime.datetime.utcfromtimestamp(seconds).isoformat() + 'Z'
+            else:
+                iso_time = datetime.datetime.utcnow().isoformat() + 'Z'
+
+            doc = {
+                '@timestamp': iso_time,
+                'policy_name': r.get('policy', 'unknown'),
+                'rule_name': r.get('rule', ''),
+                'result': r.get('result', ''),
+                'severity': r.get('severity', 'medium'),
+                'message': r.get('message', ''),
+                'namespace': ns,
+                'resource_name': resource_name,
+                'resource_kind': resource_kind,
+                'source': r.get('source', 'kyverno'),
+                'category': r.get('category', ''),
+                'scored': r.get('scored', True)
+            }
+
+            payload = json.dumps(doc).encode()
+            req = Request(
+                f'{es_url}/kyverno-logs-{today}/_doc',
+                data=payload,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            try:
+                urlopen(req)
+                indexed += 1
+            except Exception as e:
+                print(f'Error indexing: {e}')
+                errors += 1
+
+    print(f'=== Done: {indexed} results indexed, {errors} errors ===')
+    "
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: policy-exporter
+  namespace: logging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: policy-report-reader
+rules:
+- apiGroups: ["wgpolicyk8s.io"]
+  resources: ["policyreports", "clusterpolicyreports"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: policy-exporter-binding
+subjects:
+- kind: ServiceAccount
+  name: policy-exporter
+  namespace: logging
+roleRef:
+  kind: ClusterRole
+  name: policy-report-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: policy-exporter
+  namespace: logging
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: policy-exporter
+          containers:
+          - name: exporter
+            image: python:3.11-alpine
+            command: ["/bin/sh", "/scripts/export.sh"]
+            volumeMounts:
+            - name: script
+              mountPath: /scripts
+          restartPolicy: OnFailure
+          volumes:
+          - name: script
+            configMap:
+              name: policy-exporter-script
